@@ -4,6 +4,7 @@ from qiskit import QuantumCircuit
 from qiskit_aer import AerSimulator
 import qrcode
 import base64
+import os
 from io import BytesIO
 
 app = Flask(__name__)
@@ -40,16 +41,13 @@ def generate_qr_base64(data: str) -> str:
 def run_circuit():
     data = request.get_json()
     n = int(data.get("n", 441))
-
     if n < 1 or n > 2048:
         return jsonify({"error": "n must be between 1 and 2048"}), 400
-
     try:
         bit_string = generate_bit_string(n)
         zeros = bit_string.count('0')
         ones  = bit_string.count('1')
         qr_b64 = generate_qr_base64(bit_string)
-
         return jsonify({
             "bit_string": bit_string,
             "n": n,
@@ -65,6 +63,5 @@ def health():
     return jsonify({"status": "ok"})
 
 if __name__ == "__main__":
-    import os
-port = int(os.environ.get("PORT", 5000))
-app.run(host="0.0.0.0", port=port)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
