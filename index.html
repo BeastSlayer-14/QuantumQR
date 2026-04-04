@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Qiskit QR Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #080b10; --surface: #0f1318; --surface2: #161b22;
+  --border: #21262d; --border2: #30363d;
+  --accent: #39d9b8; --accent2: #7c6cf7;
+  --text: #e6edf3; --muted: #6e7681;
+  --mono: 'Space Mono', monospace; --sans: 'DM Sans', sans-serif;
+}
+body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+body::before { content:''; position:fixed; inset:0; background-image: linear-gradient(rgba(57,217,184,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(57,217,184,0.025) 1px,transparent 1px); background-size:48px 48px; pointer-events:none; z-index:0; }
+.wrap { position:relative; z-index:1; width:100%; max-width:940px; padding:2.5rem 1.5rem 5rem; }
+.header { display:flex; align-items:center; gap:1rem; margin-bottom:2.5rem; }
+.logo { width:42px; height:42px; border:1.5px solid var(--accent); border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; background:rgba(57,217,184,0.05); }
+.header-text h1 { font-family:var(--mono); font-size:1.05rem; font-weight:700; color:var(--text); }
+.header-text p { font-size:0.78rem; color:var(--muted); margin-top:3px; }
+.badge { margin-left:auto; font-family:var(--mono); font-size:0.6rem; padding:4px 10px; border:1px solid var(--accent); border-radius:100px; color:var(--accent); letter-spacing:0.06em; white-space:nowrap; }
+.n-row { display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:1rem 1.25rem; }
+.n-row label { font-family:var(--mono); font-size:0.72rem; color:var(--muted); letter-spacing:0.05em; white-space:nowrap; }
+.n-row input[type=number] { background:var(--surface2); border:1px solid var(--border2); border-radius:6px; color:var(--accent); font-family:var(--mono); font-size:1rem; font-weight:700; padding:6px 12px; width:110px; outline:none; text-align:center; -moz-appearance:textfield; }
+.n-row input[type=number]::-webkit-outer-spin-button,.n-row input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;}
+.n-row input[type=number]:focus { border-color:var(--accent); }
+.n-hint { font-size:0.72rem; color:var(--muted); }
+.layout { display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; align-items:start; }
+@media(max-width:640px){.layout{grid-template-columns:1fr;}}
+.panel { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.panel-bar { background:var(--surface2); border-bottom:1px solid var(--border); padding:0.6rem 1rem; display:flex; align-items:center; gap:6px; }
+.dot{width:10px;height:10px;border-radius:50%;}
+.dot-r{background:#ff5f57;}.dot-y{background:#febc2e;}.dot-g{background:#28c840;}
+.panel-name { font-family:var(--mono); font-size:0.65rem; color:var(--muted); margin-left:6px; letter-spacing:0.04em; }
+.right-col { display:flex; flex-direction:column; gap:1.25rem; }
+.bit-card,.qr-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:1.25rem; }
+.qr-card { display:flex; flex-direction:column; align-items:center; gap:1rem; }
+.card-label { font-family:var(--mono); font-size:0.62rem; color:var(--muted); letter-spacing:0.08em; margin-bottom:0.75rem; }
+.qr-card .card-label { align-self:flex-start; margin-bottom:0; }
+.bit-string { font-family:var(--mono); font-size:1.1rem; font-weight:700; color:var(--accent); letter-spacing:0.15em; word-break:break-all; line-height:1.8; min-height:2rem; max-height:120px; overflow-y:auto; }
+.bit-string.empty { color:var(--border2); font-size:0.85rem; letter-spacing:0.05em; font-weight:400; }
+.bit-meta { margin-top:0.75rem; display:flex; gap:1rem; font-family:var(--mono); font-size:0.68rem; color:var(--muted); }
+.bit-meta span b { color:var(--text); }
+#qr-box { width:180px; height:180px; background:var(--surface2); border:1px dashed var(--border2); border-radius:8px; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+#qr-box img { width:100%; height:100%; object-fit:contain; border-radius:6px; }
+.qr-empty { display:flex; flex-direction:column; align-items:center; gap:8px; color:var(--muted); }
+.qr-empty svg { opacity:0.25; }
+.qr-empty span { font-family:var(--mono); font-size:0.65rem; }
+.run-btn { width:100%; padding:0.9rem; background:transparent; border:1.5px solid var(--accent); border-radius:8px; color:var(--accent); font-family:var(--mono); font-size:0.8rem; font-weight:700; letter-spacing:0.06em; cursor:pointer; transition:background 0.15s,color 0.15s,box-shadow 0.15s; display:flex; align-items:center; justify-content:center; gap:8px; }
+.run-btn:hover:not(:disabled){background:var(--accent);color:#080b10;box-shadow:0 0 28px rgba(57,217,184,0.18);}
+.run-btn:active:not(:disabled){transform:scale(0.98);}
+.run-btn:disabled{opacity:0.5;cursor:not-allowed;}
+.dl-btn { background:transparent; border:1px solid var(--border2); border-radius:6px; color:var(--muted); font-family:var(--mono); font-size:0.65rem; padding:5px 14px; cursor:pointer; transition:border-color 0.15s,color 0.15s; letter-spacing:0.04em; }
+.dl-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent);}
+.dl-btn:disabled{opacity:0.35;cursor:not-allowed;}
+.status { display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:0.68rem; color:var(--muted); margin-top:0.75rem; min-height:16px; }
+.status-dot { width:6px; height:6px; border-radius:50%; background:var(--border2); flex-shrink:0; }
+.status.ok .status-dot{background:#28c840;}
+.status.err .status-dot{background:#ff5f57;}
+.status.err{color:#ff5f57;}
+.status.running .status-dot{background:var(--accent);animation:blink 0.9s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
+::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="logo">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <circle cx="11" cy="11" r="3" fill="#39d9b8"/>
+        <circle cx="11" cy="11" r="8" stroke="#39d9b8" stroke-width="1.2" stroke-dasharray="3 2"/>
+        <circle cx="11" cy="3" r="1.5" fill="#7c6cf7"/>
+        <circle cx="19" cy="11" r="1.5" fill="#7c6cf7"/>
+        <circle cx="11" cy="19" r="1.5" fill="#7c6cf7"/>
+        <circle cx="3" cy="11" r="1.5" fill="#7c6cf7"/>
+      </svg>
+    </div>
+    <div class="header-text">
+      <h1>Qiskit QR Generator</h1>
+      <p>Quantum randomness → n-bit string → QR code</p>
+    </div>
+    <div class="badge">HADAMARD ⊗ MEASURE</div>
+  </div>
+
+  <div class="n-row">
+    <label>N BITS</label>
+    <input type="number" id="n-input" value="441" min="1" max="2048" />
+    <span class="n-hint">Each bit = one true quantum measurement (Hadamard gate + collapse)</span>
+  </div>
+
+  <div class="layout">
+    <!-- Left panel -->
+    <div class="panel">
+      <div class="panel-bar">
+        <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+        <span class="panel-name">circuit.py — AerSimulator</span>
+      </div>
+      <div style="padding:1.25rem;">
+        <div style="font-family:var(--mono);font-size:0.72rem;line-height:2.2;color:var(--muted);margin-bottom:1.5rem;background:var(--surface2);padding:1rem;border-radius:8px;border:1px solid var(--border);">
+          <div><span style="color:#6e7681;">q[0]:</span> <span style="color:var(--text);">──</span><span style="color:var(--accent);">[H]</span><span style="color:var(--text);">──</span><span style="color:#7c6cf7;">[M]</span><span style="color:var(--text);">──</span></div>
+          <div style="padding-left:112px;color:var(--accent2);">║</div>
+          <div><span style="color:#6e7681;">c[0]:</span> <span style="color:var(--text);">══════════</span><span style="color:var(--accent2);">⟹</span></div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:0;">
+          <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
+            <span style="font-size:0.72rem;color:var(--muted);font-family:var(--mono);">GATE</span>
+            <span style="font-family:var(--mono);font-size:0.8rem;color:var(--accent2);">Hadamard (H)</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
+            <span style="font-size:0.72rem;color:var(--muted);font-family:var(--mono);">SHOTS / BIT</span>
+            <span style="font-family:var(--mono);font-size:0.8rem;color:var(--text);">1</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
+            <span style="font-size:0.72rem;color:var(--muted);font-family:var(--mono);">BACKEND</span>
+            <span style="font-family:var(--mono);font-size:0.8rem;color:var(--text);">AerSimulator</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:10px 0;">
+            <span style="font-size:0.72rem;color:var(--muted);font-family:var(--mono);">P(|0⟩) = P(|1⟩)</span>
+            <span style="font-family:var(--mono);font-size:0.8rem;color:var(--accent);">50% / 50%</span>
+          </div>
+        </div>
+
+        <div style="margin-top:1.25rem;">
+          <div style="font-family:var(--mono);font-size:0.62rem;color:var(--muted);letter-spacing:0.08em;margin-bottom:8px;">MEASURED DISTRIBUTION</div>
+          <div style="display:flex;gap:6px;align-items:center;margin-bottom:5px;">
+            <span style="font-family:var(--mono);font-size:0.6rem;color:var(--muted);width:24px;">|0⟩</span>
+            <div style="flex:1;height:6px;background:var(--border2);border-radius:3px;overflow:hidden;">
+              <div id="zero-bar" style="height:100%;width:50%;background:var(--accent);border-radius:3px;transition:width 0.5s;"></div>
+            </div>
+            <span id="zero-pct" style="font-family:var(--mono);font-size:0.65rem;color:var(--accent);min-width:34px;text-align:right;">50%</span>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <span style="font-family:var(--mono);font-size:0.6rem;color:var(--muted);width:24px;">|1⟩</span>
+            <div style="flex:1;height:6px;background:var(--border2);border-radius:3px;overflow:hidden;">
+              <div id="one-bar" style="height:100%;width:50%;background:var(--accent2);border-radius:3px;transition:width 0.5s;"></div>
+            </div>
+            <span id="one-pct" style="font-family:var(--mono);font-size:0.65rem;color:var(--accent2);min-width:34px;text-align:right;">50%</span>
+          </div>
+        </div>
+
+        <button class="run-btn" id="run-btn" onclick="runCircuit()" style="margin-top:1.5rem;">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><polygon points="2,1 12,6.5 2,12" fill="currentColor"/></svg>
+          RUN CIRCUIT
+        </button>
+        <div class="status" id="status">
+          <div class="status-dot"></div>
+          <span id="status-text">idle — waiting for input</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right column -->
+    <div class="right-col">
+      <div class="bit-card">
+        <div class="card-label">N-BIT STRING OUTPUT</div>
+        <div class="bit-string empty" id="bit-display">waiting for circuit run...</div>
+        <div class="bit-meta" id="bit-meta" style="display:none;">
+          <span>|0⟩ count: <b id="zero-count">—</b></span>
+          <span>|1⟩ count: <b id="one-count">—</b></span>
+          <span>length: <b id="bit-len">—</b></span>
+        </div>
+      </div>
+
+      <div class="qr-card">
+        <div class="card-label">QR CODE</div>
+        <div id="qr-box">
+          <div class="qr-empty">
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+              <rect x="4" y="4" width="16" height="16" rx="2" stroke="#6e7681" stroke-width="1.5"/>
+              <rect x="8" y="8" width="8" height="8" rx="1" fill="#6e7681"/>
+              <rect x="28" y="4" width="16" height="16" rx="2" stroke="#6e7681" stroke-width="1.5"/>
+              <rect x="32" y="8" width="8" height="8" rx="1" fill="#6e7681"/>
+              <rect x="4" y="28" width="16" height="16" rx="2" stroke="#6e7681" stroke-width="1.5"/>
+              <rect x="8" y="32" width="8" height="8" rx="1" fill="#6e7681"/>
+              <rect x="28" y="28" width="4" height="4" fill="#6e7681"/>
+              <rect x="36" y="28" width="4" height="4" fill="#6e7681"/>
+              <rect x="28" y="36" width="4" height="4" fill="#6e7681"/>
+              <rect x="36" y="36" width="4" height="4" fill="#6e7681"/>
+              <rect x="32" y="32" width="4" height="4" fill="#6e7681"/>
+            </svg>
+            <span>run circuit to generate</span>
+          </div>
+        </div>
+        <button class="dl-btn" id="dl-btn" disabled onclick="downloadQR()">↓ DOWNLOAD PNG</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const BACKEND = "http://localhost:5000";
+let currentQRSrc = null;
+
+async function runCircuit() {
+  const n = parseInt(document.getElementById("n-input").value);
+  if (isNaN(n) || n < 1 || n > 2048) { setStatus("err","n must be between 1 and 2048"); return; }
+  const btn = document.getElementById("run-btn");
+  btn.disabled = true;
+  setStatus("running", "generating " + n + " quantum bits...");
+  try {
+    const res = await fetch(BACKEND + "/run", {
+      method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({n})
+    });
+    const data = await res.json();
+    if (data.error) { setStatus("err", data.error); return; }
+    const bd = document.getElementById("bit-display");
+    bd.classList.remove("empty");
+    bd.textContent = data.bit_string;
+    document.getElementById("zero-count").textContent = data.zeros;
+    document.getElementById("one-count").textContent  = data.ones;
+    document.getElementById("bit-len").textContent    = data.n;
+    document.getElementById("bit-meta").style.display = "flex";
+    const zp = Math.round((data.zeros / data.n) * 100);
+    const op = 100 - zp;
+    document.getElementById("zero-bar").style.width = zp + "%";
+    document.getElementById("one-bar").style.width  = op + "%";
+    document.getElementById("zero-pct").textContent = zp + "%";
+    document.getElementById("one-pct").textContent  = op + "%";
+    const img = document.createElement("img");
+    img.src = "data:image/png;base64," + data.qr_image;
+    currentQRSrc = img.src;
+    const box = document.getElementById("qr-box");
+    box.innerHTML = "";
+    box.appendChild(img);
+    document.getElementById("dl-btn").disabled = false;
+    setStatus("ok", "done — " + data.n + " bits generated");
+  } catch(e) {
+    setStatus("err","cannot reach backend — is Flask running on port 5000?");
+  } finally { btn.disabled = false; }
+}
+
+function setStatus(type, msg) {
+  const el = document.getElementById("status");
+  el.className = "status " + type;
+  document.getElementById("status-text").textContent = msg;
+}
+
+function downloadQR() {
+  if (!currentQRSrc) return;
+  const a = document.createElement("a");
+  a.href = currentQRSrc; a.download = "quantum_qr.png"; a.click();
+}
+</script>
+</body>
+</html>
