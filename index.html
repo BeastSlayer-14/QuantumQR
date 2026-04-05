@@ -196,16 +196,33 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
 const BACKEND = "https://quantumqr.onrender.com";
 let currentQRSrc = null;
 
+async function fetchWithWakeup(url, options, maxWaitMs = 90000) {
+  const wakeStart = Date.now();
+  let woken = false;
+  while (!woken && Date.now() - wakeStart < maxWaitMs) {
+    try {
+      const ping = await fetch(BACKEND + "/health", { signal: AbortSignal.timeout(8000) });
+      if (ping.ok) { woken = true; break; }
+    } catch (_) {}
+    await new Promise(r => setTimeout(r, 3000));
+    const elapsed = Math.round((Date.now() - wakeStart) / 1000);
+    setStatus("running", `waking up server... (${elapsed}s) — Render free tier sleeps after inactivity`);
+  }
+  if (!woken) throw new Error("Server did not respond after 90s");
+  return fetch(url, options);
+}
+
 async function runCircuit() {
   const n = parseInt(document.getElementById("n-input").value);
   if (isNaN(n) || n < 1 || n > 2048) { setStatus("err","n must be between 1 and 2048"); return; }
   const btn = document.getElementById("run-btn");
   btn.disabled = true;
-  setStatus("running", "generating " + n + " quantum bits...");
+  setStatus("running", "contacting server...");
   try {
-    const res = await fetch(BACKEND + "/run", {
+    const res = await fetchWithWakeup(BACKEND + "/run", {
       method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({n})
     });
+    setStatus("running", "generating " + n + " quantum bits...");
     const data = await res.json();
     if (data.error) { setStatus("err", data.error); return; }
     const bd = document.getElementById("bit-display");
@@ -230,7 +247,7 @@ async function runCircuit() {
     document.getElementById("dl-btn").disabled = false;
     setStatus("ok", "done — " + data.n + " bits generated");
   } catch(e) {
-    setStatus("err","cannot reach backend — is Flask running on port 5000?");
+    setStatus("err", "cannot reach backend — " + (e.message || "check your Render deployment"));
   } finally { btn.disabled = false; }
 }
 
