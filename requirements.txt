@@ -4,4 +4,4 @@ qiskit
 qiskit-aer
 qrcode[pil]
 pillow
-anthropic
+groq
